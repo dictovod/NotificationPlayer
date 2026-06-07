@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NotificationPlayer</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700;900&family=Geologica:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0c0e12;--bg2:#12151c;--bg3:#191d28;--card:#141820;
+  --border:#1e2535;--border2:#252d40;
+  --txt:#b8c4dc;--txt2:#5c6b8a;--txt3:#2e3a52;--white:#edf1f9;
+  --a1:#5b8eff;--a1d:rgba(91,142,255,.12);--a1b:rgba(91,142,255,.25);
+  --a2:#ff6b6b;--a2d:rgba(255,107,107,.12);
+  --a3:#c084fc;--a3d:rgba(192,132,252,.12);
+  --a4:#34d399;--a4d:rgba(52,211,153,.12);
+  --warn:#fbbf24;--warnd:rgba(251,191,36,.12);
+  --err:#f87171;--errd:rgba(248,113,113,.1);
+  --r:18px;--r2:12px;--r3:8px;
+  --mono:'Courier New',monospace;
+  --display:'Unbounded',sans-serif;
+  --body:'Geologica',sans-serif;
+}
+html,body{background:#060709;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;font-family:var(--body);padding:40px 20px 80px}
+
+/* ── PHONE ── */
+.phone{width:390px;min-height:844px;background:var(--bg);border-radius:46px;border:1.5px solid var(--border2);overflow:hidden;position:relative;
+  box-shadow:0 0 0 8px #0a0c10,0 0 0 10px #1a1f2e,0 40px 120px rgba(0,0,0,.8),0 0 80px rgba(91,142,255,.07)}
+
+/* ── STATUS BAR ── */
+.statusbar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;font-size:12px;color:var(--txt)}
+.sb-time{font-family:var(--display);font-weight:600;font-size:15px;color:var(--white)}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.notch{width:120px;height:34px;background:#000;border-radius:0 0 20px 20px;margin:0 auto;margin-top:-4px;display:flex;align-items:center;justify-content:center;gap:8px;z-index:10;position:relative}
+.notch-cam{width:10px;height:10px;border-radius:50%;background:#1a1a1a;border:1.5px solid #2a2a2a}
+
+/* ── CONTENT SCROLLER ── */
+.content{padding:0 20px 110px;overflow-y:auto;max-height:calc(844px - 48px - 34px - 72px)}
+.content::-webkit-scrollbar{width:0}
+
+/* ── APP HEADER ── */
+.app-header{padding:18px 0 6px;display:flex;align-items:center;justify-content:space-between}
+.app-title{font-family:var(--display);font-weight:900;font-size:22px;color:var(--white);letter-spacing:-0.03em}
+.app-title span{color:var(--a1)}
+.hdr-btns{display:flex;gap:8px}
+.hdr-btn{width:38px;height:38px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.hdr-btn:hover{background:var(--bg3);border-color:var(--a1)}
+.hdr-btn svg{opacity:.6;transition:opacity .2s}
+.hdr-btn:hover svg{opacity:1}
+
+/* ── SECTION LABEL ── */
+.section-label{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt2);margin:20px 0 10px}
+
+/* ── SERVICE CARD ── */
+.service-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin:10px 0;position:relative;overflow:hidden}
+.service-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--a1),var(--a3),var(--a4))}
+.service-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.service-icon{width:42px;height:42px;border-radius:13px;background:var(--a1d);border:1px solid var(--a1b);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.service-info{flex:1}
+.service-name{font-family:var(--display);font-weight:700;font-size:13px;color:var(--white);letter-spacing:-0.02em}
+.service-sub{font-size:10px;color:var(--txt2);margin-top:2px}
+.status-dot-wrap{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;cursor:pointer;transition:color .2s}
+.status-dot-wrap.active{color:var(--a4)}
+.status-dot-wrap.inactive{color:var(--err)}
+.status-dot{width:8px;height:8px;border-radius:50%}
+.status-dot-wrap.active .status-dot{background:var(--a4);animation:blink 2s ease-in-out infinite}
+.status-dot-wrap.inactive .status-dot{background:var(--err)}
+@keyframes blink{0%,100%{opacity:1;box-shadow:0 0 5px var(--a4)}50%{opacity:.4;box-shadow:none}}
+
+/* ── WAVE ── */
+.wave-wrap{height:60px;border-radius:10px;background:var(--bg2);overflow:hidden;position:relative}
+canvas.waveform{width:100%;height:100%;display:block}
+.wave-label{position:absolute;top:7px;left:10px;font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:.06em;pointer-events:none}
+
+/* ── VOICE CARDS ── */
+.voice-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.voice-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r2);padding:14px 13px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.voice-card.active-m{border-color:rgba(255,107,107,.5);background:linear-gradient(135deg,rgba(255,107,107,.08),var(--card))}
+.voice-card.active-f{border-color:rgba(192,132,252,.5);background:linear-gradient(135deg,rgba(192,132,252,.08),var(--card))}
+.voice-card:not(.active-m):not(.active-f):hover{border-color:var(--border2);background:var(--bg3)}
+.voice-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1.5px}
+.voice-card.active-m::after{background:linear-gradient(90deg,var(--a2),transparent)}
+.voice-card.active-f::after{background:linear-gradient(90deg,var(--a3),transparent)}
+.vc-gender{font-size:9px;font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px}
+.voice-card.active-m .vc-gender{color:var(--a2)}
+.voice-card.active-f .vc-gender{color:var(--a3)}
+.voice-card:not(.active-m):not(.active-f) .vc-gender{color:var(--txt3)}
+.vc-name{font-family:var(--display);font-weight:700;font-size:17px;color:var(--white);letter-spacing:-0.03em;line-height:1;margin-bottom:3px}
+.vc-tag{font-size:10px;color:var(--txt2)}
+.vc-check{position:absolute;top:11px;right:11px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;transition:all .2s}
+.voice-card.active-m .vc-check{background:var(--a2);color:#fff}
+.voice-card.active-f .vc-check{background:var(--a3);color:#fff}
+.voice-card:not(.active-m):not(.active-f) .vc-check{background:var(--border);color:transparent}
+
+/* ── SLIDERS ── */
+.sliders{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:14px;margin-bottom:12px}
+.slider-row{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.slider-row:last-child{margin-bottom:0}
+.slider-name{font-size:11px;color:var(--txt2);width:56px;flex-shrink:0}
+.slider-track{flex:1;height:4px;background:var(--bg2);border-radius:2px;position:relative;cursor:pointer}
+.slider-fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px;transition:width .05s}
+.slider-fill.spd{background:linear-gradient(90deg,var(--a1),#88b0ff)}
+.slider-fill.pit{background:linear-gradient(90deg,var(--a3),#d8b4fe)}
+.slider-fill.vol{background:linear-gradient(90deg,var(--a4),#6ee7b7)}
+.slider-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--white);box-shadow:0 0 6px rgba(0,0,0,.4);cursor:grab;transition:transform .1s}
+.slider-thumb:active,.slider-thumb.dragging{cursor:grabbing;transform:translate(-50%,-50%) scale(1.3)}
+.slider-val{font-family:var(--mono);font-size:11px;color:var(--txt);width:34px;text-align:right;flex-shrink:0}
+
+/* ── BIG BUTTON ── */
+.big-btn{width:100%;padding:15px;border-radius:13px;border:none;background:linear-gradient(135deg,var(--a1),#3d6ff5);color:var(--white);font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:-0.01em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin:5px 0;transition:all .2s;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(91,142,255,.25)}
+.big-btn:hover{box-shadow:0 10px 30px rgba(91,142,255,.35);transform:translateY(-1px)}
+.big-btn:active{transform:scale(.98)}
+.big-btn.secondary{background:var(--card);border:1px solid var(--border2);color:var(--txt);box-shadow:none}
+.big-btn.secondary:hover{border-color:var(--a1);color:var(--a1);box-shadow:none}
+.big-btn.danger{background:var(--card);border:1px solid rgba(248,113,113,.3);color:var(--err);box-shadow:none}
+.big-btn.danger:hover{background:var(--errd);border-color:var(--err)}
+.big-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── TOGGLE ── */
+.toggle{width:42px;height:24px;border-radius:12px;background:var(--bg2);border:1px solid var(--border2);position:relative;cursor:pointer;transition:background .2s,border-color .2s;flex-shrink:0}
+.toggle.on{background:var(--a1);border-color:var(--a1)}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--white);transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle.on .toggle-thumb{transform:translateX(18px)}
+
+/* ── CHIPS ── */
+.chip{font-size:9px;font-family:var(--display);letter-spacing:.06em;padding:3px 7px;border-radius:5px;font-weight:600;white-space:nowrap}
+.chip.on{background:var(--a4d);color:var(--a4)}
+.chip.off{background:var(--bg2);color:var(--txt3)}
+
+/* ── APP ITEMS ── */
+.app-item{display:flex;align-items:center;gap:11px;padding:10px 15px;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;user-select:none}
+.app-item:last-child{border-bottom:none}
+.app-item:hover{background:var(--bg3)}
+.app-item:active{background:var(--bg2)}
+.app-ico{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.app-name{flex:1;font-size:13px;color:var(--txt);font-weight:500}
+.app-pkg{font-size:10px;color:var(--txt3);font-family:var(--mono)}
+
+/* ── FILTER CARD ── */
+.filter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:11px;overflow:hidden}
+.filter-header{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;cursor:pointer;transition:background .15s}
+.filter-header:hover{background:var(--bg3)}
+.fh-left{display:flex;align-items:center;gap:10px}
+.fh-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.fh-title{font-size:13px;font-weight:500;color:var(--white)}
+.fh-sub{font-size:10px;color:var(--txt2);margin-top:1px}
+.filter-body{border-top:1px solid var(--border);padding:14px 15px;display:none}
+.filter-body.open{display:block}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:14px;gap:2px}
+.tab{flex:1;padding:8px 0;text-align:center;font-family:var(--display);font-weight:600;font-size:10px;letter-spacing:.04em;color:var(--txt2);border-radius:7px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.tab.active{background:var(--bg3);color:var(--white);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+
+/* ── PERM BANNER ── */
+.perm-banner{background:linear-gradient(135deg,var(--warnd),rgba(251,191,36,.03));border:1px solid rgba(251,191,36,.25);border-radius:var(--r2);padding:13px 14px;display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+.perm-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.perm-text{font-size:12px;color:var(--txt);line-height:1.5}
+.perm-text strong{color:var(--warn)}
+.perm-btn{display:inline-block;font-family:var(--display);font-weight:700;font-size:10px;letter-spacing:.06em;padding:5px 11px;border-radius:6px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:var(--warn);cursor:pointer;margin-top:7px;transition:all .2s}
+.perm-btn:hover{background:rgba(251,191,36,.25)}
+
+/* ── HISTORY ── */
+.hist-item{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);align-items:flex-start;cursor:pointer;transition:background .15s;border-radius:8px;padding:11px 8px;margin:0 -8px}
+.hist-item:hover{background:var(--bg3)}
+.hist-item:last-child{border-bottom:none}
+.hist-ico-wrap{position:relative;flex-shrink:0}
+.hist-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.hist-played .hist-ico{background:var(--a4d)}
+.hist-skipped .hist-ico{background:var(--bg3)}
+.hist-play-tag{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;border:1.5px solid var(--bg)}
+.hist-played .hist-play-tag{background:var(--a4);color:#000}
+.hist-skipped .hist-play-tag{background:var(--border2);color:var(--txt3)}
+.hist-body{flex:1;min-width:0}
+.hist-app{font-size:12px;font-weight:500;color:var(--white);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hist-time{font-family:var(--mono);font-size:10px;color:var(--txt3);flex-shrink:0}
+.hist-text{font-size:12px;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-reason{font-size:10px;color:var(--txt3);margin-top:2px;font-family:var(--mono)}
+.hist-empty{color:var(--txt3);font-size:13px;text-align:center;padding:40px 0;font-family:var(--mono)}
+
+/* ── LOG ── */
+.log-box{background:#0a0d13;border:1px solid var(--border);border-radius:var(--r2);padding:11px;font-family:var(--mono);font-size:11px;line-height:1.75;max-height:340px;overflow-y:auto;margin-bottom:12px}
+.log-box::-webkit-scrollbar{width:3px}
+.log-box::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.l-ok{color:#34d399}.l-inf{color:#60a5fa}.l-wrn{color:#fbbf24}.l-err{color:#f87171}.l-dim{color:var(--txt3)}.l-bold{color:var(--white);font-weight:bold}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{position:absolute;bottom:0;left:0;right:0;background:rgba(12,14,18,.95);backdrop-filter:blur(16px);border-top:1px solid var(--border);display:flex;padding:8px 0 22px;z-index:50}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 0;cursor:pointer;transition:all .2s}
+.nav-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.nav-item.active .nav-icon{background:var(--a1d)}
+.nav-label{font-size:9px;font-family:var(--display);font-weight:600;letter-spacing:.04em;color:var(--txt3);transition:color .2s}
+.nav-item.active .nav-label{color:var(--a1)}
+
+/* ── PAGE ── */
+.page{display:none}
+.page.active{display:block}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page.active>*{animation:slideUp .28s ease both}
+.page.active>*:nth-child(1){animation-delay:.00s}
+.page.active>*:nth-child(2){animation-delay:.04s}
+.page.active>*:nth-child(3){animation-delay:.08s}
+.page.active>*:nth-child(4){animation-delay:.12s}
+.page.active>*:nth-child(5){animation-delay:.16s}
+.page.active>*:nth-child(6){animation-delay:.20s}
+.page.active>*:nth-child(7){animation-delay:.24s}
+
+/* ── SPEAKING OVERLAY ── */
+.speaking-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(91,142,255,.07),transparent 60%);pointer-events:none;opacity:0;transition:opacity .4s;z-index:1}
+.speaking-overlay.on{opacity:1}
+
+/* ── MODAL ── */
+.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none;align-items:flex-end}
+.modal-backdrop.open{display:flex}
+.modal-sheet{background:var(--bg2);border-radius:24px 24px 0 0;border-top:1px solid var(--border2);width:100%;max-height:88%;overflow-y:auto;padding:0 0 32px;animation:sheetUp .3s ease}
+.modal-sheet::-webkit-scrollbar{width:0}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:12px auto 16px}
+.modal-title{font-family:var(--display);font-weight:800;font-size:18px;color:var(--white);letter-spacing:-0.03em;padding:0 20px 16px}
+.modal-section{padding:0 20px;margin-bottom:20px}
+.modal-section-label{font-family:var(--display);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--txt2);margin-bottom:10px}
+.modal-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.modal-row:last-child{border-bottom:none}
+.modal-row-label{font-size:13px;color:var(--txt)}
+.modal-row-sub{font-size:11px;color:var(--txt2);margin-top:2px}
+.modal-row-val{font-family:var(--mono);font-size:12px;color:var(--a1)}
+.modal-close{position:absolute;top:16px;right:20px;width:30px;height:30px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--txt2)}
+
+/* ── TOAST ── */
+.toast{position:absolute;bottom:84px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-size:12px;color:var(--txt);white-space:nowrap;z-index:500;opacity:0;transition:all .25s;pointer-events:none;font-family:var(--mono)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── INPUT ── */
+.inp{background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 13px;font-family:var(--mono);font-size:12px;color:var(--white);width:100%;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--a1)}
+.inp::placeholder{color:var(--txt3)}
+
+/* ── TIME PICKER ── */
+.time-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.time-inp{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:14px;color:var(--white);width:68px;text-align:center;outline:none;transition:border-color .2s}
+.time-inp:focus{border-color:var(--a1)}
+.time-sep{color:var(--txt2);font-size:18px;font-weight:bold}
+
+/* ── STAT ROW ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:14px 12px;text-align:center}
+.stat-val{font-family:var(--display);font-weight:800;font-size:22px;color:var(--a1);line-height:1;margin-bottom:4px}
+.stat-lbl{font-family:var(--mono);font-size:9px;color:var(--txt2);letter-spacing:.08em;text-transform:uppercase}
+
+/* ── LOADING BAR ── */
+.loading-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:8px 0}
+.loading-fill{height:100%;background:linear-gradient(90deg,var(--a1),var(--a3));border-radius:2px;transition:width .4s ease}
+
+/* ── SNOOZE PILL ── */
+.snooze-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.snooze-pill{padding:5px 12px;border-radius:20px;font-size:11px;font-family:var(--display);font-weight:600;cursor:pointer;transition:all .2s;border:1px solid var(--border2);color:var(--txt2)}
+.snooze-pill.active,.snooze-pill:hover{background:var(--a1d);border-color:var(--a1);color:var(--a1)}
+
+/* ── ADD APP FORM ── */
+.add-form{display:none;padding:12px 0 0}
+.add-form.open{display:block}
+
+/* ── RADIO ── */
+.radio-row{display:flex;gap:8px;margin-top:8px}
+.radio-pill{flex:1;padding:7px;border-radius:8px;border:1px solid var(--border2);text-align:center;font-size:11px;font-family:var(--display);font-weight:600;color:var(--txt2);cursor:pointer;transition:all .2s}
+.radio-pill.on{border-color:var(--a1);color:var(--a1);background:var(--a1d)}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="speaking-overlay" id="speakOverlay"></div>
+
+  <!-- STATUS BAR -->
+  <div class="statusbar">
+    <span class="sb-time" id="sbTime">00:00</span>
+    <div class="sb-icons">
+      <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+        <rect x="0" y="4" width="2" height="6" rx="1" fill="#edf1f9" opacity=".4"/>
+        <rect x="3" y="2.5" width="2" height="7.5" rx="1" fill="#edf1f9" opacity=".6"/>
+        <rect x="6" y="1" width="2" height="9" rx="1" fill="#edf1f9" opacity=".8"/>
+        <rect x="9" y="0" width="2" height="10" rx="1" fill="#edf1f9"/>
+      </svg>
+      <svg width="14" height="10" viewBox="0 0 14 10" fill="#edf1f9">
+        <path d="M7 2C9.2 2 11.2 2.9 12.6 4.4L14 3C12.2 1.1 9.7 0 7 0S1.8 1.1 0 3l1.4 1.4C2.8 2.9 4.8 2 7 2z" opacity=".4"/>
+        <path d="M7 5c1.4 0 2.7.6 3.6 1.5L12 5.1C10.7 3.8 9 3 7 3S3.3 3.8 2 5.1l1.4 1.4C4.3 5.6 5.6 5 7 5z" opacity=".75"/>
+        <circle cx="7" cy="8.5" r="1.5"/>
+      </svg>
+      <svg width="24" height="11" viewBox="0 0 24 11" fill="none">
+        <rect x="0" y="1" width="20" height="9" rx="3" stroke="#edf1f9" stroke-width="1"/>
+        <rect x="21" y="3.5" width="2" height="4" rx="1" fill="#edf1f9" opacity=".4"/>
+        <rect x="1.5" y="2.5" width="14" height="6" rx="1.5" fill="#34d399"/>
+      </svg>
+    </div>
+  </div>
+  <div class="notch"><div class="notch-cam"></div><div style="width:38px;height:4px;background:#1a1a1a;border-radius:2px"></div></div>
+
+  <!-- CONTENT -->
+  <div class="content" id="mainContent">
+    <div class="app-header">
+      <div class="app-title">Notif<span>Player</span></div>
+      <div class="hdr-btns">
+        <div class="hdr-btn" id="btnSimulate" title="Симулировать уведомление" onclick="simulateNotif()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b8c4dc" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        <div class="hdr-btn" id="btnSettings" title="Настройки" onclick="openModal('settings')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b8c4dc" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ГЛАВНАЯ -->
+    <div class="page active" id="page-main">
+      <!-- stats -->
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Сегодня</div></div>
+        <div class="stat-card"><div class="stat-val" id="statPlayed">0</div><div class="stat-lbl">Озвучено</div></div>
+        <div class="stat-card"><div class="stat-val" id="statSkipped">0</div><div class="stat-lbl">Пропущено</div></div>
+      </div>
+
+      <!-- service -->
+      <div class="service-card">
+        <div class="service-top">
+          <div class="service-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5b8eff" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+            </svg>
+          </div>
+          <div class="service-info">
+            <div class="service-name">TTS Сервис</div>
+            <div class="service-sub" id="serviceSubText">sherpa-onnx 1.12.40 · Ruslan</div>
+          </div>
+          <div class="status-dot-wrap active" id="serviceStatusBtn" onclick="toggleService()">
+            <div class="status-dot"></div>
+            <span id="serviceStatusTxt">Активен</span>
+          </div>
+        </div>
+        <!-- model loading progress (hidden by default) -->
+        <div id="modelLoadWrap" style="display:none;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--txt2);margin-bottom:4px">
+            <span>Загрузка модели…</span><span id="loadPct">0%</span>
+          </div>
+          <div class="loading-bar"><div class="loading-fill" id="loadFill" style="width:0%"></div></div>
+        </div>
+        <div class="wave-wrap">
+          <span class="wave-label">ОСЦИЛЛОГРАФ</span>
+          <canvas class="waveform" id="waveCanvas" width="700" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- voice -->
+      <div class="section-label">Голос TTS</div>
+      <div class="voice-row">
+        <div class="voice-card active-m" id="vc-ruslan" onclick="selectVoice('ruslan')">
+          <div class="vc-gender">♂ Мужской</div>
+          <div class="vc-name">Ruslan</div>
+          <div class="vc-tag">VITS · Piper · ru</div>
+          <div class="vc-check">✓</div>
+        </div>
+        <div class="voice-card" id="vc-irina" onclick="selectVoice('irina')">
+          <div class="vc-gender">♀ Женский</div>
+          <div class="vc-name">Irina</div>
+          <div class="vc-tag">VITS · Piper · ru</div>
+          <div class="vc-check"></div>
+        </div>
+      </div>
+
+      <!-- sliders -->
+      <div class="sliders">
+        <div class="slider-row">
+          <div class="slider-name">Скорость</div>
+          <div class="slider-track" id="sl-spd" onmousedown="startDrag(event,'spd')" ontouchstart="startDrag(event,'spd')">
+            <div class="slider-fill spd" id="fill-spd"></div>
+            <div class="slider-thumb" id="thumb-spd"></div>
+          </div>
+          <div class="slider-val" id="val-spd">1.1×</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Тон</div>
+          <div class="slider-track" id="sl-pit" onmousedown="startDrag(event,'pit')" ontouchstart="startDrag(event,'pit')">
+            <div class="slider-fill pit" id="fill-pit"></div>
+            <div class="slider-thumb" id="thumb-pit"></div>
+          </div>
+          <div class="slider-val" id="val-pit">0.8</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Громкость</div>
+          <div class="slider-track" id="sl-vol" onmousedown="startDrag(event,'vol')" ontouchstart="startDrag(event,'vol')">
+            <div class="slider-fill vol" id="fill-vol"></div>
+            <div class="slider-thumb" id="thumb-vol"></div>
+          </div>
+          <div class="slider-val" id="val-vol">75%</div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-name">Пауза</div>
+          <div class="slider-track" id="sl-pau" onmousedown="startDrag(event,'pau')" ontouchstart="startDrag(event,'pau')">
+            <div class="slider-fill" style="background:linear-gradient(90deg,var(--warn),#fde68a)" id="fill-pau"></div>
+            <div class="slider-thumb" id="thumb-pau"></div>
+          </div>
+          <div class="slider-val" id="val-pau">1.5с</div>
+        </div>
+      </div>
+
+      <button class="big-btn" onclick="testSpeak()" id="testBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Проверить голос
+      </button>
+    </div>
+
+    <!-- PAGE: ФИЛЬТРЫ -->
+    <div class="page" id="page-filters">
+      <div class="perm-banner" id="permBanner">
+        <div class="perm-icon">🔔</div>
+        <div>
+          <div class="perm-text"><strong>Доступ к уведомлениям</strong> разрешён</div>
+          <div class="perm-text" style="color:var(--txt2);font-size:11px;margin-top:2px">Сервис слушает уведомления в реальном времени</div>
+        </div>
+      </div>
+
+      <div class="section-label">Приложения</div>
+      <div class="tabs">
+        <div class="tab active" onclick="filterTab(this,'all')">Все</div>
+        <div class="tab" onclick="filterTab(this,'on')">Активные</div>
+        <div class="tab" onclick="filterTab(this,'off')">Заблокированные</div>
+      </div>
+
+      <div class="filter-card" id="appListCard">
+        <div id="appList"></div>
+      </div>
+
+      <!-- Add app -->
+      <button class="big-btn secondary" onclick="toggleAddForm()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Добавить приложение
+      </button>
+      <div class="add-form filter-card" id="addForm" style="margin-top:8px;display:none">
+        <div style="padding:14px 15px">
+          <div class="modal-section-label" style="margin-bottom:8px">Пакет приложения</div>
+          <input class="inp" id="addPkgInput" placeholder="com.example.app" />
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="big-btn" style="margin:0" onclick="addAppFromInput()">Добавить</button>
+            <button class="big-btn secondary" style="margin:0;flex:0 0 auto;padding:0 16px" onclick="toggleAddForm()">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DND -->
+      <div class="section-label">Автоматика</div>
+      <div class="filter-card">
+        <div class="filter-header" onclick="toggleFilterBody('dnd-body')">
+          <div class="fh-left">
+            <div class="fh-icon" style="background:rgba(248,113,113,.1)">🌙</div>
+            <div>
+              <div class="fh-title">Режим «Не беспокоить»</div>
+              <div class="fh-sub" id="dndSub">23:00 — 07:00</div>
+            </div>
+          </div>
+          <div class="toggle on" id="toggle-dnd" onclick="event.stopPropagation();toggleSwitch('toggle-dnd')"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="filter-body" id="dnd-body">
+          <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">Уведомления в это время озвучиваться не будут</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <div class="modal-section-label" style="margin-bottom:6px">С</div>
+              <div class="time-row"><input class="time-inp" id="dndFrom" value="23" min="0" max="23" type="number"><div class="time-sep">:</div><input class="time-inp" value="00" min="0" max="59" type="number"></div>
+            </div>
+            <div>
+              <div class="modal-section-label" style="margin-bottom:6px">До</div>
+              <div class="time-row"><input class="time-inp" id="dndTo" value="07" min="0" max="23" type="number"><div class="time-sep">:</div><input class="time-inp" value="00" min="0" max="59" type="number"></div>
+            </div>
+          </div>
+          <button class="big-btn secondary" style="margin-top:10px;font-size:11px" onclick="saveDnd()">Сохранить</button>
+        </div>
+      </div>
+
+      <!-- Min length -->
+      <div class="filter-card">
+        <div class="filter-header" onclick="toggleFilterBody('minlen-body')">
+          <div class="fh-left">
+            <div class="fh-icon" style="background:rgba(91,142,255,.1)">📏</div>
+            <div>
+              <div class="fh-title">Мин. длина текста</div>
+              <div class="fh-sub" id="minlenSub">Пропускать короче 5 символов</div>
+            </div>
+          </div>
+          <div class="toggle on" id="toggle-minlen" onclick="event.stopPropagation();toggleSwitch('toggle-minlen')"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="filter-body" id="minlen-body">
+          <div class="slider-row" style="margin-bottom:0">
+            <div class="slider-name" style="width:auto;margin-right:4px">Символов:</div>
+            <div class="slider-track" id="sl-minlen" onmousedown="startDrag(event,'minlen')" ontouchstart="startDrag(event,'minlen')" style="flex:1">
+              <div class="slider-fill" style="background:linear-gradient(90deg,var(--a1),#88b0ff);width:20%" id="fill-minlen"></div>
+              <div class="slider-thumb" id="thumb-minlen" style="left:20%"></div>
+            </div>
+            <div class="slider-val" id="val-minlen">5</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skip duplicates -->
+      <div class="filter-card">
+        <div class="filter-header">
+          <div class="fh-left">
+            <div class="fh-icon" style="background:rgba(52,211,153,.1)">🔄</div>
+            <div>
+              <div class="fh-title">Пропускать дубликаты</div>
+              <div class="fh-sub">Одинаковый текст в течение 30 сек.</div>
+            </div>
+          </div>
+          <div class="toggle on" id="toggle-dedup" onclick="event.stopPropagation();toggleSwitch('toggle-dedup')"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+
+      <!-- Stop ongoing TTS -->
+      <div class="filter-card">
+        <div class="filter-header">
+          <div class="fh-left">
+            <div class="fh-icon" style="background:rgba(192,132,252,.1)">⚡</div>
+            <div>
+              <div class="fh-title">Прерывать текущее</div>
+              <div class="fh-sub">Новое уведомление прерывает озвучку</div>
+            </div>
+          </div>
+          <div class="toggle" id="toggle-interrupt" onclick="event.stopPropagation();toggleSwitch('toggle-interrupt')"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+
+      <!-- Snooze -->
+      <div class="filter-card">
+        <div class="filter-header" onclick="toggleFilterBody('snooze-body')">
+          <div class="fh-left">
+            <div class="fh-icon" style="background:var(--warnd)">⏸️</div>
+            <div>
+              <div class="fh-title">Пауза (Snooze)</div>
+              <div class="fh-sub" id="snoozeSub">Не активна</div>
+            </div>
+          </div>
+          <div class="toggle" id="toggle-snooze" onclick="event.stopPropagation();toggleSwitch('toggle-snooze')"><div class="toggle-thumb"></div></div>
+        </div>
+        <div class="filter-body" id="snooze-body">
+          <div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Остановить озвучку на время:</div>
+          <div class="snooze-row">
+            <div class="snooze-pill" onclick="setSnooze(this,15)">15 мин</div>
+            <div class="snooze-pill" onclick="setSnooze(this,30)">30 мин</div>
+            <div class="snooze-pill" onclick="setSnooze(this,60)">1 час</div>
+            <div class="snooze-pill" onclick="setSnooze(this,120)">2 часа</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: ИСТОРИЯ -->
+    <div class="page" id="page-history">
+      <div class="section-label">Журнал событий</div>
+      <div id="historyList"></div>
+      <button class="big-btn danger" onclick="clearHistory()" id="clearHistBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Очистить историю
+      </button>
+    </div>
+
+    <!-- PAGE: ЛОГ -->
+    <div class="page" id="page-log">
+      <div class="section-label">Диагностика</div>
+      <div class="log-box" id="logBox"></div>
+      <button class="big-btn secondary" style="margin-bottom:8px" onclick="shareLog()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Скопировать лог
+      </button>
+      <button class="big-btn danger" onclick="clearLog()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Очистить лог
+      </button>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-main" onclick="showPage('main')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5b8eff" stroke-width="2" stroke-linecap="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+        </svg>
+      </div>
+      <div class="nav-label">Главная</div>
+    </div>
+    <div class="nav-item" id="nav-filters" onclick="showPage('filters')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5c6b8a" stroke-width="2" stroke-linecap="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        </svg>
+      </div>
+      <div class="nav-label">Фильтры</div>
+    </div>
+    <div class="nav-item" id="nav-history" onclick="showPage('history')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5c6b8a" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="nav-label">История</div>
+    </div>
+    <div class="nav-item" id="nav-log" onclick="showPage('log')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5c6b8a" stroke-width="2" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </div>
+      <div class="nav-label">Лог</div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ═══════ MODAL: SETTINGS ═══════ -->
+  <div class="modal-backdrop" id="modal-settings" onclick="closeModalBackdrop(event,'settings')">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="position:relative;padding:0 20px 4px">
+        <div class="modal-title">⚙️ Настройки</div>
+        <div class="modal-close" onclick="closeModal('settings')">✕</div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Голос и синтез</div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Активный голос</div><div class="modal-row-sub">Текущая TTS модель</div></div>
+          <div class="modal-row-val" id="settingVoiceName">Ruslan</div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Скорость речи</div><div class="modal-row-sub">Множитель воспроизведения</div></div>
+          <div class="modal-row-val" id="settingSpd">1.1×</div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Тон голоса</div></div>
+          <div class="modal-row-val" id="settingPit">0.8</div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Громкость</div></div>
+          <div class="modal-row-val" id="settingVol">75%</div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Интерфейс</div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Тема</div><div class="modal-row-sub">Оформление приложения</div></div>
+          <div>
+            <div class="radio-row">
+              <div class="radio-pill on" onclick="selectTheme(this,'dark')">Тёмная</div>
+              <div class="radio-pill" onclick="selectTheme(this,'amoled')">AMOLED</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Язык интерфейса</div></div>
+          <div class="modal-row-val">RU</div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Показывать уведомление в шторке</div><div class="modal-row-sub">Постоянное фоновое уведомление</div></div>
+          <div class="toggle on" id="toggle-notify-shade" onclick="toggleSwitch('toggle-notify-shade')"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">Модели (sherpa-onnx)</div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Ruslan</div><div class="modal-row-sub">ru_RU-ruslan-medium.onnx</div></div>
+          <div style="text-align:right"><div class="modal-row-val" style="color:var(--a4)">✓ Загружена</div><div style="font-size:10px;color:var(--txt3);font-family:var(--mono)">63.2 МБ</div></div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">Irina</div><div class="modal-row-sub">ru_RU-irina-medium.onnx</div></div>
+          <div style="text-align:right"><div class="modal-row-val" style="color:var(--a4)">✓ Загружена</div><div style="font-size:10px;color:var(--txt3);font-family:var(--mono)">63.1 МБ</div></div>
+        </div>
+        <div class="modal-row">
+          <div><div class="modal-row-label">espeak-ng-data</div><div class="modal-row-sub">Фонемизация русского текста</div></div>
+          <div class="modal-row-val" style="color:var(--a4)">✓ OK</div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="big-btn secondary" style="font-size:11px" onclick="reloadModels();closeModal('settings')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Перезагрузить модели
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">О приложении</div>
+        <div class="modal-row">
+          <div class="modal-row-label">Версия</div>
+          <div class="modal-row-val">1.5</div>
+        </div>
+        <div class="modal-row">
+          <div class="modal-row-label">ID пакета</div>
+          <div class="modal-row-val" style="font-size:10px">com.notificationplayer.app</div>
+        </div>
+        <div class="modal-row">
+          <div class="modal-row-label">Репозиторий</div>
+          <div class="modal-row-val" style="font-size:10px;color:var(--a1)">dictovod/NotificationPlayer</div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="big-btn danger" style="font-size:11px" onclick="toast('Кеш очищен');closeModal('settings')">
+            Сбросить все настройки
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ MODAL: NOTIF DETAIL ═══════ -->
+  <div class="modal-backdrop" id="modal-notif" onclick="closeModalBackdrop(event,'notif')">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div style="position:relative;padding:0 20px 8px">
+        <div class="modal-title" id="notifModalTitle">Уведомление</div>
+        <div class="modal-close" onclick="closeModal('notif')">✕</div>
+      </div>
+      <div class="modal-section">
+        <div id="notifModalBody"></div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <button class="big-btn secondary" style="margin:0" onclick="toast('Приложение добавлено в блок-лист');closeModal('notif')">🚫 Заблокировать</button>
+          <button class="big-btn secondary" style="margin:0;flex:0 0 auto;padding:0 14px" onclick="closeModal('notif')">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+const state = {
+  serviceOn: true,
+  voice: 'ruslan',
+  sliders: { spd: 55, pit: 40, vol: 75, pau: 30, minlen: 20 },
+  stats: { total: 0, played: 0, skipped: 0 },
+  history: [],
+  apps: [
+    { emoji:'💬', name:'Telegram',       pkg:'org.telegram.messenger',  on:true  },
+    { emoji:'📱', name:'WhatsApp',        pkg:'com.whatsapp',            on:true  },
+    { emoji:'📧', name:'Gmail',           pkg:'com.google.android.gm',   on:true  },
+    { emoji:'🔔', name:'Системные',       pkg:'android.system',          on:false },
+    { emoji:'🎵', name:'YouTube Music',   pkg:'com.google.android.apps.youtube.music', on:false },
+    { emoji:'🛒', name:'Ozon',            pkg:'ru.ozon.app.android',     on:true  },
+    { emoji:'🏦', name:'СберБанк',        pkg:'ru.sberbankmobile',       on:true  },
+  ],
+  filterMode: 'all',
+  speaking: false,
+};
+
+const notifSamples = [
+  { app:'Telegram', emoji:'💬', pkg:'org.telegram.messenger', texts:['Александр: Привет! Как дела?','Мария: Встреча в 15:00 подтверждена','Новое сообщение в группе «Работа»'] },
+  { app:'WhatsApp', emoji:'📱', pkg:'com.whatsapp',           texts:['Мама: Позвони когда освободишься','Сергей: Отчёт готов, проверь','📎 Документ: договор.pdf'] },
+  { app:'Gmail',    emoji:'📧', pkg:'com.google.android.gm',  texts:['Новое письмо: Счёт за июнь','Отчёт за Q2 2026 готов к просмотру','Подтверждение заказа #48291'] },
+  { app:'СберБанк', emoji:'🏦', pkg:'ru.sberbankmobile',       texts:['Зачисление 15 000 ₽','Перевод 3 500 ₽ выполнен','Карта *1234: платёж 890 ₽'] },
+  { app:'Ozon',     emoji:'🛒', pkg:'ru.ozon.app.android',     texts:['Ваш заказ передан в доставку','Курьер прибудет с 14:00 до 16:00'] },
+];
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('load', () => {
+  updateClock();
+  setInterval(updateClock, 15000);
+  initSliders();
+  renderApps();
+  renderHistory();
+  initLog();
+  updateServiceSubText();
+  drawWave();
+  // Auto-add some history items
+  setTimeout(() => addHistoryItem(notifSamples[0], notifSamples[0].texts[0], true), 400);
+  setTimeout(() => addHistoryItem(notifSamples[1], notifSamples[1].texts[0], true), 700);
+  setTimeout(() => addHistoryItem(notifSamples[3], notifSamples[3].texts[0], true), 900);
+  setTimeout(() => {
+    addHistoryItem(notifSamples[2], 'ok',  false, 'приложение в блок-листе');
+    addHistoryItem(notifSamples[1], notifSamples[1].texts[1], true);
+  }, 1100);
+  // Random live notifications every 12-20 sec
+  setInterval(autoNotif, 14000);
+});
+
+// ═══════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════
+function updateClock() {
+  const d = new Date();
+  document.getElementById('sbTime').textContent =
+    d.getHours().toString().padStart(2,'0') + ':' +
+    d.getMinutes().toString().padStart(2,'0');
+}
+
+// ═══════════════════════════════════════════════
+//  PAGE SWITCHING
+// ═══════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.remove('active');
+    const svg = n.querySelector('svg'); if(svg) svg.setAttribute('stroke','#5c6b8a');
+  });
+  document.getElementById('page-'+name).classList.add('active');
+  const nav = document.getElementById('nav-'+name);
+  if(nav){ nav.classList.add('active'); const svg=nav.querySelector('svg'); if(svg) svg.setAttribute('stroke','#5b8eff'); }
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+// ═══════════════════════════════════════════════
+//  SERVICE TOGGLE
+// ═══════════════════════════════════════════════
+function toggleService() {
+  state.serviceOn = !state.serviceOn;
+  const btn = document.getElementById('serviceStatusBtn');
+  const txt = document.getElementById('serviceStatusTxt');
+  btn.className = 'status-dot-wrap ' + (state.serviceOn ? 'active' : 'inactive');
+  txt.textContent = state.serviceOn ? 'Активен' : 'Остановлен';
+  if(state.serviceOn) addLog('ok','Сервис запущен');
+  else               addLog('wrn','Сервис остановлен пользователем');
+  toast(state.serviceOn ? '✅ Сервис запущен' : '⏸ Сервис остановлен');
+}
+
+// ═══════════════════════════════════════════════
+//  VOICE SELECT
+// ═══════════════════════════════════════════════
+function selectVoice(v) {
+  state.voice = v;
+  const r = document.getElementById('vc-ruslan');
+  const i = document.getElementById('vc-irina');
+  r.className = 'voice-card' + (v==='ruslan' ? ' active-m' : '');
+  i.className = 'voice-card' + (v==='irina'  ? ' active-f' : '');
+  r.querySelector('.vc-check').textContent = v==='ruslan' ? '✓' : '';
+  i.querySelector('.vc-check').textContent = v==='irina'  ? '✓' : '';
+  document.getElementById('settingVoiceName').textContent = v==='ruslan' ? 'Ruslan' : 'Irina';
+  updateServiceSubText();
+  addLog('inf','Голос изменён: ' + (v==='ruslan' ? 'Ruslan (мужской)' : 'Irina (женский)'));
+  toast('Голос: ' + (v==='ruslan' ? 'Ruslan' : 'Irina'));
+}
+
+function updateServiceSubText() {
+  document.getElementById('serviceSubText').textContent =
+    'sherpa-onnx 1.12.40 · ' + (state.voice==='ruslan' ? 'Ruslan' : 'Irina');
+}
+
+// ═══════════════════════════════════════════════
+//  SLIDERS
+// ═══════════════════════════════════════════════
+const sliderCfg = {
+  spd:    { label: v => (0.5+v/100*1.5).toFixed(1)+'×',  settingId:'settingSpd' },
+  pit:    { label: v => (0.3+v/100*1.4).toFixed(1),       settingId:'settingPit' },
+  vol:    { label: v => Math.round(v)+'%',                 settingId:'settingVol' },
+  pau:    { label: v => (0.2+v/100*4.8).toFixed(1)+'с',   settingId:null },
+  minlen: { label: v => Math.round(1+v/100*29)+'',         settingId:null },
+};
+
+function initSliders() {
+  Object.keys(state.sliders).forEach(k => applySlider(k, state.sliders[k]));
+}
+
+function applySlider(k, pct) {
+  state.sliders[k] = pct;
+  const fill  = document.getElementById('fill-'+k);
+  const thumb = document.getElementById('thumb-'+k);
+  const val   = document.getElementById('val-'+k);
+  if(fill)  fill.style.width = pct+'%';
+  if(thumb) thumb.style.left = pct+'%';
+  const label = sliderCfg[k].label(pct);
+  if(val) val.textContent = label;
+  if(sliderCfg[k].settingId) {
+    const el = document.getElementById(sliderCfg[k].settingId);
+    if(el) el.textContent = label;
+  }
+  // update minlen sub
+  if(k==='minlen') document.getElementById('minlenSub').textContent =
+    'Пропускать короче '+Math.round(1+pct/100*29)+' символов';
+}
+
+let dragging = null;
+function startDrag(e, k) {
+  e.preventDefault();
+  dragging = k;
+  const thumb = document.getElementById('thumb-'+k);
+  if(thumb) thumb.classList.add('dragging');
+  moveDrag(e);
+}
+function moveDrag(e) {
+  if(!dragging) return;
+  const track = document.getElementById('sl-'+dragging);
+  if(!track) return;
+  const rect = track.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const pct = Math.max(0, Math.min(100, (cx-rect.left)/rect.width*100));
+  applySlider(dragging, pct);
+}
+document.addEventListener('mousemove', moveDrag);
+document.addEventListener('touchmove', moveDrag, {passive:true});
+document.addEventListener('mouseup', () => {
+  if(dragging){ const t=document.getElementById('thumb-'+dragging); if(t) t.classList.remove('dragging'); dragging=null; }
+});
+document.addEventListener('touchend', () => {
+  if(dragging){ const t=document.getElementById('thumb-'+dragging); if(t) t.classList.remove('dragging'); dragging=null; }
+});
+
+// ═══════════════════════════════════════════════
+//  TOGGLE
+// ═══════════════════════════════════════════════
+function toggleSwitch(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('on');
+}
+
+function toggleFilterBody(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════
+//  APPS LIST
+// ═══════════════════════════════════════════════
+function renderApps() {
+  const list = document.getElementById('appList');
+  const filtered = state.apps.filter(a => {
+    if(state.filterMode==='on')  return  a.on;
+    if(state.filterMode==='off') return !a.on;
+    return true;
+  });
+  if(filtered.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--txt3);font-family:var(--mono);font-size:12px">// список пуст</div>';
+    return;
+  }
+  list.innerHTML = filtered.map((a,i) => `
+    <div class="app-item" onclick="toggleApp(${state.apps.indexOf(a)})">
+      <div class="app-ico" style="background:${appBg(i)}">${a.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div class="app-name">${a.name}</div>
+        <div class="app-pkg">${a.pkg}</div>
+      </div>
+      <span class="chip ${a.on?'on':'off'}">${a.on?'ВКЛ':'ВЫКЛ'}</span>
+    </div>`).join('');
+}
+
+function appBg(i){
+  const bgs=['rgba(52,211,153,.1)','rgba(91,142,255,.1)','rgba(251,191,36,.1)','rgba(192,132,252,.1)','rgba(248,113,113,.1)','rgba(52,211,153,.12)','rgba(91,142,255,.12)'];
+  return bgs[i%bgs.length];
+}
+
+function toggleApp(idx) {
+  state.apps[idx].on = !state.apps[idx].on;
+  const a = state.apps[idx];
+  addLog(a.on?'ok':'wrn', (a.on?'Включено':'Выключено')+': '+a.name);
+  toast((a.on?'✅ Включено: ':'🚫 Выключено: ') + a.name);
+  renderApps();
+}
+
+function filterTab(el, mode) {
+  document.querySelectorAll('#page-filters .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  state.filterMode = mode;
+  renderApps();
+}
+
+function toggleAddForm() {
+  const f = document.getElementById('addForm');
+  const isOpen = f.style.display !== 'none';
+  f.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) { setTimeout(()=>document.getElementById('addPkgInput').focus(), 100); }
+}
+
+function addAppFromInput() {
+  const inp = document.getElementById('addPkgInput');
+  const pkg = inp.value.trim();
+  if(!pkg) { toast('❌ Введите пакет'); return; }
+  const name = pkg.split('.').pop();
+  state.apps.push({ emoji:'📦', name, pkg, on:true });
+  addLog('ok','Добавлено приложение: '+name+' ('+pkg+')');
+  toast('✅ Добавлено: '+name);
+  inp.value = '';
+  toggleAddForm();
+  renderApps();
+}
+
+// ═══════════════════════════════════════════════
+//  DND / SNOOZE
+// ═══════════════════════════════════════════════
+function saveDnd() {
+  const f = document.getElementById('dndFrom').value.padStart(2,'0');
+  const t = document.getElementById('dndTo').value.padStart(2,'0');
+  document.getElementById('dndSub').textContent = f+':00 — '+t+':00';
+  toast('⏱ DND сохранён: '+f+':00 — '+t+':00');
+  addLog('inf','DND обновлён: '+f+':00 — '+t+':00');
+}
+
+let snoozeActive = null;
+function setSnooze(el, min) {
+  document.querySelectorAll('.snooze-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  snoozeActive = min;
+  document.getElementById('snoozeSub').textContent = 'На '+min+' мин';
+  const toggle = document.getElementById('toggle-snooze');
+  if(!toggle.classList.contains('on')) toggle.classList.add('on');
+  addLog('wrn','Snooze активирован на '+min+' мин');
+  toast('⏸ Пауза на '+min+' мин');
+}
+
+// ═══════════════════════════════════════════════
+//  TEST SPEAK
+// ═══════════════════════════════════════════════
+function testSpeak() {
+  if(!state.serviceOn){ toast('❌ Сервис выключен'); return; }
+  if(state.speaking) return;
+  state.speaking = true;
+  const btn = document.getElementById('testBtn');
+  const overlay = document.getElementById('speakOverlay');
+  const phrase = state.voice==='ruslan' ? '«Новое уведомление от Telegram»' : '«Пришло сообщение от Александра»';
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Синтез речи…`;
+  btn.style.background = 'linear-gradient(135deg,#2a4fc9,#1e3a9f)';
+  overlay.classList.add('on');
+  addLog('inf','Тест TTS: '+phrase);
+  const dur = 1800 + Math.random()*600;
+  setTimeout(() => {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Проверить голос`;
+    btn.style.background = '';
+    overlay.classList.remove('on');
+    state.speaking = false;
+    addLog('ok','Тест завершён за '+(dur/1000).toFixed(1)+' с');
+    toast('✅ Голос воспроизведён');
+  }, dur);
+}
+
+// ═══════════════════════════════════════════════
+//  SIMULATE NOTIFICATION
+// ═══════════════════════════════════════════════
+function simulateNotif() {
+  if(!state.serviceOn){ toast('❌ Сервис выключен'); return; }
+  const sample = notifSamples[Math.floor(Math.random()*notifSamples.length)];
+  const text = sample.texts[Math.floor(Math.random()*sample.texts.length)];
+  const appEntry = state.apps.find(a=>a.pkg===sample.pkg);
+  const allowed = appEntry ? appEntry.on : true;
+  triggerNotification(sample, text, allowed);
+}
+
+function autoNotif() {
+  if(!state.serviceOn) return;
+  const sample = notifSamples[Math.floor(Math.random()*notifSamples.length)];
+  const text = sample.texts[Math.floor(Math.random()*sample.texts.length)];
+  const appEntry = state.apps.find(a=>a.pkg===sample.pkg);
+  const allowed = appEntry ? appEntry.on : true;
+  triggerNotification(sample, text, allowed);
+}
+
+function triggerNotification(sample, text, allowed) {
+  state.stats.total++;
+  if(allowed){ state.stats.played++; addLog('inf','Получено: '+sample.app+' → '+text); addLog('ok','Воспроизведено за '+(0.7+Math.random()*1.2).toFixed(1)+' с'); }
+  else        { state.stats.skipped++; addLog('wrn',sample.app+' — заблокировано, пропуск'); }
+  updateStats();
+  addHistoryItem(sample, text, allowed, allowed ? '' : 'приложение в блок-листе');
+  if(allowed) triggerWavePulse();
+  toast((allowed?'🔊 ':'⏭ ')+(allowed?'Озвучено':'Пропущено')+': '+sample.app);
+}
+
+// ═══════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════
+function addHistoryItem(sample, text, played, reason='') {
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  state.history.unshift({ sample, text, played, reason, time });
+  if(state.history.length > 30) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if(!state.history.length){
+    list.innerHTML = '<div class="hist-empty">// история пуста</div>';
+    document.getElementById('clearHistBtn').disabled = true;
+    return;
+  }
+  document.getElementById('clearHistBtn').disabled = false;
+  list.innerHTML = state.history.map((h,i) => `
+    <div class="hist-item ${h.played?'hist-played':'hist-skipped'}" onclick="openNotifModal(${i})">
+      <div class="hist-ico-wrap">
+        <div class="hist-ico">${h.sample.emoji}</div>
+        <div class="hist-play-tag">${h.played?'▶':'⏭'}</div>
+      </div>
+      <div class="hist-body">
+        <div class="hist-app"><span>${h.sample.app}</span><span class="hist-time">${h.time}</span></div>
+        <div class="hist-text">${h.text}</div>
+        ${h.reason ? `<div class="hist-reason">↳ пропущено: ${h.reason}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function openNotifModal(i) {
+  const h = state.history[i];
+  document.getElementById('notifModalTitle').textContent = h.sample.emoji + ' ' + h.sample.app;
+  document.getElementById('notifModalBody').innerHTML = `
+    <div class="modal-row"><div class="modal-row-label">Текст</div></div>
+    <div style="background:var(--bg2);border-radius:9px;padding:12px;font-size:13px;color:var(--txt);margin:8px 0 12px;line-height:1.6">${h.text}</div>
+    <div class="modal-row"><div class="modal-row-label">Пакет</div><div class="modal-row-val" style="font-size:10px">${h.sample.pkg}</div></div>
+    <div class="modal-row"><div class="modal-row-label">Время</div><div class="modal-row-val">${h.time}</div></div>
+    <div class="modal-row"><div class="modal-row-label">Статус</div><div class="modal-row-val" style="color:${h.played?'var(--a4)':'var(--err)'}">${h.played?'▶ Озвучено':'⏭ Пропущено'}</div></div>
+    ${h.reason ? `<div class="modal-row"><div class="modal-row-label">Причина</div><div class="modal-row-val" style="color:var(--warn);font-size:10px">${h.reason}</div></div>` : ''}
+  `;
+  openModal('notif');
+}
+
+function clearHistory() {
+  state.history = [];
+  renderHistory();
+  addLog('inf','История очищена');
+  toast('🗑 История очищена');
+}
+
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('statTotal').textContent   = state.stats.total;
+  document.getElementById('statPlayed').textContent  = state.stats.played;
+  document.getElementById('statSkipped').textContent = state.stats.skipped;
+}
+
+// ═══════════════════════════════════════════════
+//  LOG
+// ═══════════════════════════════════════════════
+function initLog() {
+  addLog('bold','NotificationPlayer v1.5 запущен');
+  addLog('dim', '────────────────────────');
+  addLog('inf', 'Инициализация sherpa-onnx 1.12.40');
+  addLog('inf', 'Ruslan: модель загружена (63.2 МБ)');
+  addLog('inf', 'Irina:  модель загружена (63.1 МБ)');
+  addLog('inf', 'espeak-ng-data: OK');
+  addLog('ok',  'TTS движок готов (Ruslan)');
+  addLog('ok',  'NotificationListenerService запущен');
+  addLog('dim', '────────────────────────');
+}
+
+function addLog(type, msg) {
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  const cls = {ok:'l-ok',inf:'l-inf',wrn:'l-wrn',err:'l-err',dim:'l-dim',bold:'l-bold'}[type]||'l-inf';
+  const tag = {ok:'[OK]  ',inf:'[INFO]',wrn:'[WARN]',err:'[ERR] ',dim:'',bold:''}[type]||'[INFO]';
+  div.className = cls;
+  div.textContent = (tag ? tag+' ' : '') + msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logBox').innerHTML = '<div class="l-dim">// лог очищен</div>';
+  toast('🗑 Лог очищен');
+}
+
+function shareLog() {
+  const text = document.getElementById('logBox').innerText;
+  navigator.clipboard.writeText(text).then(()=>toast('📋 Лог скопирован')).catch(()=>toast('❌ Ошибка копирования'));
+}
+
+// ═══════════════════════════════════════════════
+//  RELOAD MODELS
+// ═══════════════════════════════════════════════
+function reloadModels() {
+  const wrap = document.getElementById('modelLoadWrap');
+  const fill = document.getElementById('loadFill');
+  const pct  = document.getElementById('loadPct');
+  wrap.style.display = 'block';
+  let p = 0;
+  addLog('inf','Перезагрузка моделей...');
+  const iv = setInterval(() => {
+    p += 2 + Math.random()*4;
+    if(p>=100){ p=100; clearInterval(iv);
+      setTimeout(()=>{ wrap.style.display='none'; addLog('ok','Модели перезагружены'); toast('✅ Модели загружены'); },400);
+    }
+    fill.style.width = p+'%'; pct.textContent = Math.round(p)+'%';
+  }, 120);
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+function openModal(name) {
+  document.getElementById('modal-'+name).classList.add('open');
+}
+function closeModal(name) {
+  document.getElementById('modal-'+name).classList.remove('open');
+}
+function closeModalBackdrop(e, name) {
+  if(e.target === document.getElementById('modal-'+name)) closeModal(name);
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════════════════════
+//  THEME RADIO
+// ═══════════════════════════════════════════════
+function selectTheme(el, theme) {
+  document.querySelectorAll('.radio-pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  if(theme==='amoled') document.documentElement.style.setProperty('--bg','#000');
+  else document.documentElement.style.setProperty('--bg','#0c0e12');
+  document.querySelector('.phone').style.background = theme==='amoled'?'#000':'var(--bg)';
+  toast(theme==='amoled'?'🖤 AMOLED тема':'🌑 Тёмная тема');
+}
+
+// ═══════════════════════════════════════════════
+//  WAVEFORM
+// ═══════════════════════════════════════════════
+const canvas = document.getElementById('waveCanvas');
+const ctx2d  = canvas.getContext('2d');
+let wavePulse = 0;
+
+function triggerWavePulse() { wavePulse = 1; }
+
+function drawWave() {
+  const W = canvas.width, H = canvas.height;
+  ctx2d.clearRect(0,0,W,H);
+  const now = Date.now()/1000;
+  const sp  = wavePulse > 0.1;
+  if(wavePulse>0) wavePulse = Math.max(0, wavePulse - 0.018);
+
+  const amp   = sp ? 28 + wavePulse*10 : 7;
+  const lines = sp ? 3 : 2;
+
+  for(let l=0;l<lines;l++){
+    const alpha  = sp ? (l===0?.9:l===1?.45:.2) : (l===0?.55:.18);
+    const freq   = sp ? (1.8+l*.7) : (.7+l*.25);
+    const phOff  = l*Math.PI*.7;
+    const color  = sp ? (l===0?'#5b8eff':l===1?'#c084fc':'#34d399') : '#5b8eff';
+    ctx2d.beginPath();
+    ctx2d.strokeStyle = color;
+    ctx2d.globalAlpha = alpha;
+    ctx2d.lineWidth   = sp ? (l===0?2:1.5) : 1.5;
+    for(let x=0;x<W;x++){
+      const t = (x/W)*Math.PI*2*freq + now*2.5 + phOff;
+      const j = sp ? Math.sin(x*.14+now*6+l)*5 : 0;
+      const y = H/2 + Math.sin(t)*amp + j;
+      x===0 ? ctx2d.moveTo(x,y) : ctx2d.lineTo(x,y);
+    }
+    ctx2d.stroke();
+  }
+  // dashed center
+  ctx2d.beginPath(); ctx2d.strokeStyle='#1e2535'; ctx2d.globalAlpha=1;
+  ctx2d.lineWidth=1; ctx2d.setLineDash([4,6]);
+  ctx2d.moveTo(0,H/2); ctx2d.lineTo(W,H/2); ctx2d.stroke();
+  ctx2d.setLineDash([]);
+  requestAnimationFrame(drawWave);
+}
+</script>
+</body>
+</html>
