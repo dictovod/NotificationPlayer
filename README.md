@@ -146,7 +146,7 @@ Phone reads it aloud
 ## 👨‍💻 Author
 
 Developed by **Денис Сочи**  
-Telegram: [@your_handle](https://t.me/your_handle)
+Telegram: [@lp85d](https://t.me/lp85d)
 
 ---
 
